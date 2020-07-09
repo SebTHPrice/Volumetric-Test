@@ -1,0 +1,73 @@
+#version 300 es
+precision mediump float;
+precision mediump int;
+
+uniform vec4 casData[20];
+uniform mediump sampler2DShadow shadowMap;
+uniform float shadowsBias;
+uniform mediump sampler2D snoise;
+uniform mediump sampler2D gbufferD;
+uniform vec3 eye;
+uniform vec3 eyeLook;
+uniform vec2 cameraProj;
+uniform vec3 sunDir;
+uniform vec3 sunCol;
+
+in vec2 texCoord;
+in vec3 viewRay;
+out float fragColor;
+
+vec3 getPos(vec3 eye_1, vec3 eyeLook_1, vec3 viewRay_1, float depth, vec2 cameraProj_1)
+{
+    float linearDepth = cameraProj_1.y / (((depth * 0.5) + 0.5) - cameraProj_1.x);
+    float viewZDist = dot(eyeLook_1, viewRay_1);
+    vec3 wposition = eye_1 + (viewRay_1 * (linearDepth / viewZDist));
+    return wposition;
+}
+
+void rayStep(inout vec3 curPos, inout float curOpticalDepth, inout float scatteredLightAmount, float stepLenWorld, vec3 viewVecNorm)
+{
+    curPos += (viewVecNorm * stepLenWorld);
+    float l1 = ((0.4000000059604644775390625 * stepLenWorld) * 0.07999999821186065673828125) * 1.0;
+    curOpticalDepth *= exp(((-0.07999999821186065673828125) * stepLenWorld) * 1.0);
+    mat4 LWVP = mat4(vec4(casData[4]), vec4(casData[5]), vec4(casData[6]), vec4(casData[7]));
+    vec4 lPos = LWVP * vec4(curPos, 1.0);
+    vec3 _128 = lPos.xyz / vec3(lPos.w);
+    lPos = vec4(_128.x, _128.y, _128.z, lPos.w);
+    vec3 _148 = vec3(lPos.xy, lPos.z - shadowsBias);
+    float visibility = texture(shadowMap, vec3(_148.xy, _148.z));
+    scatteredLightAmount += ((curOpticalDepth * l1) * visibility);
+}
+
+void main()
+{
+    float pixelRayMarchNoise = (textureLod(snoise, texCoord * 100.0, 0.0).x * 2.0) - 1.0;
+    float depth = (textureLod(gbufferD, texCoord, 0.0).x * 2.0) - 1.0;
+    vec3 p = getPos(eye, eyeLook, normalize(viewRay), depth, cameraProj);
+    vec3 viewVec = p - eye;
+    float worldPosDist = length(viewVec);
+    vec3 viewVecNorm = viewVec / vec3(worldPosDist);
+    float startDepth = 0.100000001490116119384765625;
+    startDepth = min(worldPosDist, startDepth);
+    float endDepth = 20.0;
+    endDepth = min(worldPosDist, endDepth);
+    vec3 curPos = eye + (viewVecNorm * startDepth);
+    float stepLenWorld = 0.0500000007450580596923828125 * (endDepth - startDepth);
+    float curOpticalDepth = exp((-0.07999999821186065673828125) * stepLenWorld);
+    float scatteredLightAmount = 0.0;
+    curPos += ((viewVecNorm * stepLenWorld) * pixelRayMarchNoise);
+    for (float l = 0.0500000007450580596923828125; l < 0.999989986419677734375; l += 0.0500000007450580596923828125)
+    {
+        vec3 param = curPos;
+        float param_1 = curOpticalDepth;
+        float param_2 = scatteredLightAmount;
+        float param_3 = stepLenWorld;
+        vec3 param_4 = viewVecNorm;
+        rayStep(param, param_1, param_2, param_3, param_4);
+        curPos = param;
+        curOpticalDepth = param_1;
+        scatteredLightAmount = param_2;
+    }
+    fragColor = scatteredLightAmount * 1.0;
+}
+

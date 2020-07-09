@@ -1,0 +1,52 @@
+#version 300 es
+precision mediump float;
+precision mediump int;
+
+uniform vec2 dir;
+uniform vec2 screenSize;
+uniform mediump sampler2D tex;
+
+in vec2 texCoord;
+out vec4 fragColor;
+
+float normpdf(float x, float sigma)
+{
+    return (0.3989399969577789306640625 * exp((((-0.5) * x) * x) / (sigma * sigma))) / sigma;
+}
+
+float normpdf3(vec3 v, float sigma)
+{
+    return (0.3989399969577789306640625 * exp(((-0.5) * dot(v, v)) / (sigma * sigma))) / sigma;
+}
+
+void main()
+{
+    vec2 _step = dir / screenSize;
+    vec3 colf = textureLod(tex, texCoord, 0.0).xyz * 0.132571995258331298828125;
+    float res = 0.0;
+    float sumfactor = 0.0;
+    float param = 0.0;
+    float param_1 = 1.0;
+    float f = 1.0 / normpdf(param, param_1);
+    for (int i = 1; i < 10; i++)
+    {
+        float indexable[10] = float[](0.132571995258331298828125, 0.12547199428081512451171875, 0.10637299716472625732421875, 0.0807799994945526123046875, 0.0549499988555908203125, 0.03348200023174285888671875, 0.018275000154972076416015625, 0.008933999575674533843994140625, 0.00391199998557567596435546875, 0.00153500004671514034271240234375);
+        float fw = f * indexable[i];
+        vec2 s = _step * (float(i) + 0.5);
+        float col = textureLod(tex, texCoord + s, 0.0).x;
+        vec3 param_2 = vec3(col) - colf;
+        float param_3 = 1.0;
+        float factor = normpdf3(param_2, param_3) * fw;
+        sumfactor += factor;
+        res += (factor * col);
+        col = textureLod(tex, texCoord - s, 0.0).x;
+        vec3 param_4 = vec3(col) - colf;
+        float param_5 = 1.0;
+        factor = normpdf3(param_4, param_5) * fw;
+        sumfactor += factor;
+        res += (factor * col);
+    }
+    res /= sumfactor;
+    fragColor = vec4(vec3(1.0) * res, 1.0);
+}
+

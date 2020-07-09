@@ -1,0 +1,20 @@
+#version 300 es
+
+uniform mediump float texUnpack;
+uniform mediump mat3 N;
+uniform mediump mat4 WVP;
+
+in mediump vec4 pos;
+out mediump vec2 texCoord;
+in mediump vec2 tex;
+out mediump vec3 wnormal;
+in mediump vec2 nor;
+
+void main()
+{
+    mediump vec4 spos = vec4(pos.xyz, 1.0);
+    texCoord = tex * texUnpack;
+    wnormal = normalize(N * vec3(nor, pos.w));
+    gl_Position = WVP * spos;
+}
+

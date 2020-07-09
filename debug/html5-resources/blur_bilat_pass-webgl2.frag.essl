@@ -1,0 +1,51 @@
+#version 300 es
+precision mediump float;
+precision highp int;
+
+uniform highp vec2 dir;
+uniform highp vec2 screenSize;
+uniform highp sampler2D tex;
+
+in highp vec2 texCoord;
+out highp float fragColor;
+
+highp float normpdf(highp float x, highp float sigma)
+{
+    return (0.3989399969577789306640625 * exp((((-0.5) * x) * x) / (sigma * sigma))) / sigma;
+}
+
+highp float normpdf3(highp vec3 v, highp float sigma)
+{
+    return (0.3989399969577789306640625 * exp(((-0.5) * dot(v, v)) / (sigma * sigma))) / sigma;
+}
+
+void main()
+{
+    highp vec2 _step = dir / screenSize;
+    highp vec3 colf = textureLod(tex, texCoord, 0.0).xyz * 0.132571995258331298828125;
+    highp float sumfactor = 0.0;
+    highp float param = 0.0;
+    highp float param_1 = 1.0;
+    highp float f = 1.0 / normpdf(param, param_1);
+    fragColor = 0.0;
+    for (int i = 1; i < 10; i++)
+    {
+        highp float indexable[10] = float[](0.132571995258331298828125, 0.12547199428081512451171875, 0.10637299716472625732421875, 0.0807799994945526123046875, 0.0549499988555908203125, 0.03348200023174285888671875, 0.018275000154972076416015625, 0.008933999575674533843994140625, 0.00391199998557567596435546875, 0.00153500004671514034271240234375);
+        highp float fw = f * indexable[i];
+        highp vec2 s = _step * (float(i) + 0.5);
+        highp float col = textureLod(tex, texCoord + s, 0.0).x;
+        highp vec3 param_2 = vec3(col) - colf;
+        highp float param_3 = 1.0;
+        highp float factor = normpdf3(param_2, param_3) * fw;
+        sumfactor += factor;
+        fragColor += (factor * col);
+        col = textureLod(tex, texCoord - s, 0.0).x;
+        highp vec3 param_4 = vec3(col) - colf;
+        highp float param_5 = 1.0;
+        factor = normpdf3(param_4, param_5) * fw;
+        sumfactor += factor;
+        fragColor += (factor * col);
+    }
+    fragColor /= sumfactor;
+}
+
